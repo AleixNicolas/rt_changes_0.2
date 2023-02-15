@@ -8,6 +8,8 @@ import pandas as pd
 import numpy as np
 import clustering as cl
 import scipy.spatial.distance as  ssd
+import scipy.cluster.hierarchy as sch
+import matplotlib.pyplot as plt
 from twarc import ensure_flattened
 from io import TextIOWrapper
 
@@ -175,11 +177,13 @@ def main(infile: TextIOWrapper,
         print(connectivity)
     
         logging.info('Computing distance matrix')
+        elite_authors=np.empty(len(connectivity),dtype="<U10")
     
         n_matrix = np.zeros((len(connectivity),len(connectivity)))
         i=0
         for element1 in connectivity:
             j=0
+            elite_authors[i]= element1
             for element2 in connectivity:
                 n_matrix[i,j]=len(set(connectivity[element1]) & set(connectivity[element2]))
                 j=j+1
@@ -194,9 +198,10 @@ def main(infile: TextIOWrapper,
                 aux = 0
                 for k in range(len(connectivity)):
                     aux += n_matrix[i,k]*n_matrix[j,k]*n_matrix[k,i]*n_matrix[k,j]
+                aux = max(aux, 0.000001)
                 phi[i,j] = (n_matrix[i,i]*n_matrix[j,j]-n_matrix[i,j]*n_matrix[j,i])/np.sqrt(aux)
     
-        phi[np.isinf(phi)] = 10000
+        #phi[np.isinf(phi)] = 10000
         #print(phi)
         f_temp_input.close()
         f_output.close()
@@ -210,20 +215,26 @@ def main(infile: TextIOWrapper,
     
         logging.info('Computing clusters...')
         
+        plt.figure()
         if algorithm == 'nn_chain':
             Z, pol = cl.agglomerative_clustering(y, method='ward', alpha=1, K=None, verbose=0, algorithm='nn_chain')
             print (Z, pol)
+            dendro = sch.dendrogram(Z, labels = elite_authors)
         elif algorithm == 'generic':
             if method == 'centroid':
                 Z, pol = cl.agglomerative_clustering(y, method='centroid', alpha=1, K=None, verbose=0, algorithm='generic')
                 print (Z, pol)
+                dendro = sch.dendrogram(Z, labels = elite_authors)
             elif method == 'poldist':
                 Z, pol = cl.agglomerative_clustering(y, method='poldist', alpha=1, K=None, verbose=0, algorithm='generic')
                 print (Z, pol)
+                dendro = sch.dendrogram(Z, labels = elite_authors)
             elif method =='ward':
                 Z, pol = cl.agglomerative_clustering(y) 
                 print (Z, pol)
+                dendro = sch.dendrogram(Z, labels = elite_authors)
     
+        plt.savefig('plt.png', format='png', bbox_inches='tight')
 
 if __name__ == '__main__':
     main()
