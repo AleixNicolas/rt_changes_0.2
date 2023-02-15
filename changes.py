@@ -150,77 +150,79 @@ def main(infile: TextIOWrapper,
         number_of_line = number_of_line + 1
  
     print(connectivity)    
- 
-    logging.info('Generating influence net...')   
- 
-    infile.seek(0)
-    for line in infile:
-        for tweet in ensure_flattened(json.loads(line)):
-            if 'referenced_tweets' in tweet:
-                for x in tweet['referenced_tweets']:
-                    if 'retweeted' in x['type']:
-                        author_name = x['author']['username']
-                        retweeter = tweet['author']['username']
-                        is_allowed = True
-                        if is_interval:
-                            created_at_time = pd.to_datetime(created_at, utc=True)
-                            if not start_time <= created_at_time <= end_time:
-                                is_allowed = False
-                        if is_allowed:
-                            if author_name in connectivity:
-                                if str(retweeter) not in connectivity[author_name]:
-                                    connectivity[author_name].append(str(retweeter))
-    print(connectivity)
 
-    logging.info('Computing distance matrix')
-
-    n_matrix = np.zeros((len(connectivity),len(connectivity)))
-    i=0
-    for element1 in connectivity:
-        j=0
-        for element2 in connectivity:
-            n_matrix[i,j]=len(set(connectivity[element1]) & set(connectivity[element2]))
-            j=j+1
-        i=i+1
-
-    #print(n_matrix)
-
-    phi = np.zeros((len(connectivity),len(connectivity)))
     
-    for i in range(len(connectivity)):
-        for j in range(len(connectivity)):
-            aux = 0
-            for k in range(len(connectivity)):
-                aux += n_matrix[i,k]*n_matrix[j,k]*n_matrix[k,i]*n_matrix[k,j]
-            phi[i,j] = (n_matrix[i,i]*n_matrix[j,j]-n_matrix[i,j]*n_matrix[j,i])/np.sqrt(aux)
-
-    phi[np.isinf(phi)] = 10000
-    #print(phi)
-    f_temp_input.close()
-    f_output.close()
-
-    logging.info('Finished.')
-    os.remove(second_temporal_csv)
-    y = ssd.squareform(phi)
-
-    print(y, method, algorithm)
-
-
-    logging.info('Computing clusters...')
+    if algorithm != '-':
+        logging.info('Generating influence net...')   
+     
+        infile.seek(0)
+        for line in infile:
+            for tweet in ensure_flattened(json.loads(line)):
+                if 'referenced_tweets' in tweet:
+                    for x in tweet['referenced_tweets']:
+                        if 'retweeted' in x['type']:
+                            author_name = x['author']['username']
+                            retweeter = tweet['author']['username']
+                            is_allowed = True
+                            if is_interval:
+                                created_at_time = pd.to_datetime(created_at, utc=True)
+                                if not start_time <= created_at_time <= end_time:
+                                    is_allowed = False
+                            if is_allowed:
+                                if author_name in connectivity:
+                                    if str(retweeter) not in connectivity[author_name]:
+                                        connectivity[author_name].append(str(retweeter))
+        print(connectivity)
     
-    if algorithm == 'nn_chain':
-        Z, pol = cl.agglomerative_clustering(y, method='ward', alpha=1, K=None, verbose=0, algorithm='nn_chain')
-        print (Z, pol)
-    elif algorithm == 'generic':
-        if method == 'centroid':
-            Z, pol = cl.agglomerative_clustering(y, method='centroid', alpha=1, K=None, verbose=0, algorithm='generic')
+        logging.info('Computing distance matrix')
+    
+        n_matrix = np.zeros((len(connectivity),len(connectivity)))
+        i=0
+        for element1 in connectivity:
+            j=0
+            for element2 in connectivity:
+                n_matrix[i,j]=len(set(connectivity[element1]) & set(connectivity[element2]))
+                j=j+1
+            i=i+1
+    
+        #print(n_matrix)
+    
+        phi = np.zeros((len(connectivity),len(connectivity)))
+        
+        for i in range(len(connectivity)):
+            for j in range(len(connectivity)):
+                aux = 0
+                for k in range(len(connectivity)):
+                    aux += n_matrix[i,k]*n_matrix[j,k]*n_matrix[k,i]*n_matrix[k,j]
+                phi[i,j] = (n_matrix[i,i]*n_matrix[j,j]-n_matrix[i,j]*n_matrix[j,i])/np.sqrt(aux)
+    
+        phi[np.isinf(phi)] = 10000
+        #print(phi)
+        f_temp_input.close()
+        f_output.close()
+    
+        logging.info('Finished.')
+        os.remove(second_temporal_csv)
+        y = ssd.squareform(phi)
+    
+        print(y, method, algorithm)
+    
+    
+        logging.info('Computing clusters...')
+        
+        if algorithm == 'nn_chain':
+            Z, pol = cl.agglomerative_clustering(y, method='ward', alpha=1, K=None, verbose=0, algorithm='nn_chain')
             print (Z, pol)
-        elif method == 'poldist':
-            Z, pol = cl.agglomerative_clustering(y, method='poldist', alpha=1, K=None, verbose=0, algorithm='generic')
-            print (Z, pol)
-        elif method =='ward':
-            Z, pol = cl.agglomerative_clustering(y) 
-            print (Z, pol)
+        elif algorithm == 'generic':
+            if method == 'centroid':
+                Z, pol = cl.agglomerative_clustering(y, method='centroid', alpha=1, K=None, verbose=0, algorithm='generic')
+                print (Z, pol)
+            elif method == 'poldist':
+                Z, pol = cl.agglomerative_clustering(y, method='poldist', alpha=1, K=None, verbose=0, algorithm='generic')
+                print (Z, pol)
+            elif method =='ward':
+                Z, pol = cl.agglomerative_clustering(y) 
+                print (Z, pol)
     
 
 if __name__ == '__main__':
